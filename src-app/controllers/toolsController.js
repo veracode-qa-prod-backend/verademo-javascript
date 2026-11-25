@@ -1,4 +1,5 @@
 const process = require('child_process');
+const { spawn, execFile } = process;
 const fortuneRiddle = require('../utils/fortuneData.js');
 
 // Loads tools page
@@ -28,13 +29,25 @@ async function ping(host) {
         let output = "";
         console.log("Pinging " + host);
 
+        // Allowlist validation for host parameter to prevent command injection
+        const ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'example.com', 'google.com'];
+        const hostIndex = ALLOWED_HOSTS.indexOf(host);
+        if (hostIndex === -1) {
+            console.log("Invalid host: " + host);
+            output = "ping: invalid or disallowed host " + host;
+            reject(output);
+            return;
+        }
+        // Use the allowlist-retrieved value, not the tainted variable
+        const safeHost = ALLOWED_HOSTS[hostIndex];
+
         let timer = setTimeout(() => {
             console.log("Ping timed out");
-            output = "ping: unknown host " + host;
+            output = "ping: unknown host " + safeHost;
             reject(output);
         }, 5000);
         try {
-            let pingProcess = process.spawn('ping', ['-c', '1', host]);
+            let pingProcess = spawn('ping', ['-c', '1', safeHost]);
             pingProcess.stdout.on('data', (data) => {
                 output += data.toString();
             });
@@ -56,7 +69,7 @@ async function ping(host) {
             });
         } catch (err) {
             console.error("Error occured during ping: ", err);
-            output = "ping: unknown host " + host;
+            output = "ping: unknown host " + safeHost;
             resolve(output);
         }
     });
@@ -76,12 +89,23 @@ async function fortune(fortuneFile) {
         return fortuneRiddle.RiddleData();
     } else {
         return new Promise((resolve, reject) => {
-            let cmd = "fortune " + fortuneFile;
+            // Allowlist validation for fortuneFile parameter to prevent command injection
+            const ALLOWED_FORTUNE_FILES = ['computers', 'literature', 'science', 'art', 'sports'];
+            const fileIndex = ALLOWED_FORTUNE_FILES.indexOf(fortuneFile);
+            if (fileIndex === -1) {
+                console.log("Invalid fortune file: " + fortuneFile);
+                reject("Invalid fortune file selection");
+                return;
+            }
+            // Use the allowlist-retrieved value, not the tainted variable
+            const safeFortuneFile = ALLOWED_FORTUNE_FILES[fileIndex];
+
             let output=""
             try{
-                process.exec(cmd,(error, stdout, stderr) => {
+                // Use execFile instead of exec to avoid shell invocation
+                execFile('fortune', [safeFortuneFile], (error, stdout, stderr) => {
                     if (error) {
-                      console.error(`exec error: ${error}`);
+                      console.error(`execFile error: ${error}`);
                       reject(output);
                     }
                     resolve(stdout)
