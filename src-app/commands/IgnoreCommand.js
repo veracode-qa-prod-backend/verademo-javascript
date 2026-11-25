@@ -14,16 +14,16 @@ class IgnoreCommand{
 		try {
 			await dbconnector.query(sqlQuery, [blabberUsername, this.username])
 
-			sqlQuery = "SELECT blab_name FROM users WHERE username = '" + blabberUsername + "'";
+			sqlQuery = "SELECT blab_name FROM users WHERE username = ?";
 			console.log(sqlQuery);
-			let result = await dbconnector.query(sqlQuery);
+			let result = await dbconnector.query(sqlQuery, [blabberUsername]);
 			if (result.length > 0 )        
             {
                 /* START EXAMPLE VULNERABILITY */
 			    let event = this.username + " is now ignoring " + blabberUsername + " (" + result[0].blab_name + ")";
-			    sqlQuery = "INSERT INTO users_history (blabber, event) VALUES (\"" + this.username + "\", \"" + event + "\")";
+			    sqlQuery = "INSERT INTO users_history (blabber, event) VALUES (?, ?)";
 			    console.log(sqlQuery);
-			    await dbconnector.query(sqlQuery);
+			    await dbconnector.query(sqlQuery, [this.username, event]);
                 /* END EXAMPLE VULNERABILITY */
             }	
 			
