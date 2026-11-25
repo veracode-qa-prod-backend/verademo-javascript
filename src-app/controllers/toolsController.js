@@ -28,13 +28,25 @@ async function ping(host) {
         let output = "";
         console.log("Pinging " + host);
 
+        // Allowlist validation for host parameter to prevent command injection
+        const ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'host1.example.com', 'host2.example.com'];
+        const hostIndex = ALLOWED_HOSTS.indexOf(host);
+        if (hostIndex === -1) {
+            console.log("Invalid host: " + host);
+            output = "ping: host not allowed " + host;
+            reject(output);
+            return;
+        }
+        // Use the allowlist-retrieved value to break the taint chain
+        const safeHost = ALLOWED_HOSTS[hostIndex];
+
         let timer = setTimeout(() => {
             console.log("Ping timed out");
             output = "ping: unknown host " + host;
             reject(output);
         }, 5000);
         try {
-            let pingProcess = process.spawn('ping', ['-c', '1', host]);
+            let pingProcess = process.spawn('ping', ['-c', '1', safeHost]);
             pingProcess.stdout.on('data', (data) => {
                 output += data.toString();
             });
@@ -76,12 +88,23 @@ async function fortune(fortuneFile) {
         return fortuneRiddle.RiddleData();
     } else {
         return new Promise((resolve, reject) => {
-            let cmd = "fortune " + fortuneFile;
+            // Allowlist validation for fortuneFile parameter to prevent command injection
+            const ALLOWED_FORTUNE_FILES = ['fortunes', 'riddles', 'literature', 'art', 'computers'];
+            const fileIndex = ALLOWED_FORTUNE_FILES.indexOf(fortuneFile);
+            if (fileIndex === -1) {
+                console.log("Invalid fortune file: " + fortuneFile);
+                reject("Invalid fortune file selection");
+                return;
+            }
+            // Use the allowlist-retrieved value to break the taint chain
+            const safeFortuneFile = ALLOWED_FORTUNE_FILES[fileIndex];
+
             let output=""
             try{
-                process.exec(cmd,(error, stdout, stderr) => {
+                // Use execFile instead of exec to avoid shell interpretation
+                process.execFile('fortune', [safeFortuneFile], (error, stdout, stderr) => {
                     if (error) {
-                      console.error(`exec error: ${error}`);
+                      console.error(`execFile error: ${error}`);
                       reject(output);
                     }
                     resolve(stdout)
